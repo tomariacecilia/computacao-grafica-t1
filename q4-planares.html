@@ -1,0 +1,176 @@
+<html>
+<head>
+  <title>Rendering primitives</title>
+  <!--<link rel="shortcut icon" type="image/png" href="../common/images/favicon.png" />-->
+
+  <!-- libraries -->
+  <!--<link rel="stylesheet" href="../common/lib/normalize.css">-->
+  <!--<script type="text/javascript" src="../common/lib/dat.gui.js"></script>-->
+
+  <!-- modules -->
+  <!--<script type="text/javascript" src="../common/js/utils.js"></script>-->
+
+  <!-- vertex shader -->
+
+  <script type="text/javascript" src="./lib/webGLApp.js"></script>
+  <script type="text/javascript" src="./lib/webGLModel.js"></script>
+  <script type="text/javascript" src="./lib/shapes2d.js"></script>
+  <script type="text/javascript" src="./lib/shapes2dWebGL.js"></script>
+  
+  
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    #version 300 es
+    precision mediump float;
+
+    in vec3 aVertexPosition;
+    in vec3 aVertexColor;
+    uniform float uVertexPointSize;
+    uniform mat4 uModelViewMatrix;
+    uniform vec3 aShapeCenter;
+    uniform mat4 uPositionMatrix;
+    uniform float uTime;
+    smooth out vec4 vColor;
+
+    void main(void) {
+      vec4 pos = vec4(aVertexPosition,1.0);
+      vec4 center = vec4(aShapeCenter,0.0);
+
+      pos = pos - center;
+      pos = uModelViewMatrix*pos;
+      pos = pos + center;
+
+      gl_PointSize = uVertexPointSize;
+      gl_Position = pos;
+      vColor= vec4(aVertexColor,1.0);
+    }
+  </script>
+
+  <!-- fragment shader -->
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #version 300 es
+    precision mediump float;
+    in vec4 vColor;
+    out vec4 fragColor;
+
+    void main(void) {
+      fragColor = vColor;
+    }
+  </script>
+
+  <script type="text/javascript">
+  
+    class MyWebGLMainAPP extends WebGLMainApp{
+    
+      constructor(){
+          super();
+          this.i = 0;
+          this.program = null;
+          this.model = null;
+
+      }
+
+      create(){
+        this.startTime = Date.now();
+        
+        // Cria um program
+        this.program = this.createProgram("vertex-shader","fragment-shader");
+        
+        //Criar as cores vermelho, verde e azul
+        const c0 = new Color(1.0,0.0,0.0);
+        const c1 = new Color(0.0,1.0,0.0);
+        const c2 = new Color(0.0,0.0,1.0);
+
+        //Define as variáveis attribute e uniform dos shaders
+        this.attribShaderVariables = ["aVertexPosition","aVertexColor"];
+        this.uniformShaderVariables = ["uVertexPointSize","uModelViewMatrix"];
+
+        //Obtem a localização das variáveis no shader
+        this.setProgramAttribShaderVariablesLocation(this.program,this.attribShaderVariables);
+        this.setProgramUniformShaderVariablesLocation(this.program,this.uniformShaderVariables);
+                         
+        //Cria um triangulo e obtem um modelo WebGL
+        const triangle = new WebGLTriangle(this.gl, this.program, 
+                                           new Point2d(0.0,0.5,c0),
+                                           new Point2d(0.5,0.0,c1),
+                                           new Point2d(-0.5,0.0,c2),c0,true); 
+        this.triangleModel = triangle.getWebGLModel();
+
+        //Cria um polígono. Não pode ser preenchido na implementação atual
+        const polygon = new WebGLPolygon(this.gl,this.program,c0,false);
+        polygon.push(new Point2d(0.0,0.5,c0));
+        polygon.push(new Point2d(0.8,0.0,c1));
+        polygon.push(new Point2d(0.6,-0.5,c0));
+        polygon.push(new Point2d(0.0,-0.5,c2));
+        polygon.push(new Point2d(-0.8,0.3,c0));
+        this.polygonModel = polygon.getWebGLModel();
+
+        const rectangle = new WebGLRectangle(this.gl,this.program,0.3,1.0,new Point2d(-0.5,0.5,c0),c0,false);
+        this.rectangleModel = rectangle.getWebGLModel();
+
+        //Cria um círculo
+        const circle = new WebGLCircle(this.gl,this.program,-0.5,0.0,0.2,c0,32,true,true);
+        this.circleModel = circle.getWebGLModel();
+        
+      }
+
+      draw() {
+        const currentTime = Date.now();
+        const elapsedTime = (currentTime - this.startTime) / 1000.0;
+
+        const angle = (10.0*Math.PI)/180.0;
+        const tx = 0.75;
+        const ty = 0.0;
+        const identMatrix4 = [1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0];
+        const translationMatrix = [1.0, 0.0, 0.0, 0.0,
+                                  0.0, 1.0, 0.0, 0.0,
+                                  0.0, 0.0, 1.0, 0.0,
+                                  tx,  ty, 0.0, 1.0];
+        const modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                 -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                              0.0,             0.0, 1.0, 0.0,
+                                               tx,               ty, 0.0, 1.0];
+
+        const uniformShaderVariablesValues = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,identMatrix4]};
+        const uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+
+        this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues);
+
+        circle.translate(100, 100);
+        rectangle.rotate(Math.PI / 4);
+        triangle.translate(-100, 100);
+        polygon.rotate(Math.PI / 6);
+
+        this.triangleModel.draw();
+        this.polygonModel.draw(180 * elapsedTime, Math.sin(elapsedTime), Math.cos(elapsedTime));
+        this.rectangleModel.draw();
+      } 
+
+
+      init() {      
+          this.gl.clearColor(0.7, 0.7, 0.9, 1.0);
+          //this.gl.enable(this.gl.DEPTH_TEST);
+          super.init();
+
+      }
+   
+  }
+
+
+  
+  </script>
+</head>
+
+<body>
+
+  <canvas id="webgl-canvas" width="800" height="800">
+    Your browser does not support the HTML5 canvas element.
+  </canvas>
+
+  <script type="text/javascript">
+      let myWebGLMainAPP = new MyWebGLMainAPP();
+      window.onload = myWebGLMainAPP.init();
+  </script>
+
+</body>
+
+</html>
