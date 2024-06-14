@@ -1,0 +1,176 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="../webGLApp.js"></script>
+    <script type="text/javascript" src="../webGLModel.js"></script>
+    <script type="text/javascript" src="../shapes2d.js"></script>
+    <script type="text/javascript" src="../shapes2dWebGL.js"></script>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        #version 300 es
+        precision mediump float;
+    
+        in vec3 aVertexPosition;
+        in vec3 aVertexColor;
+        uniform float uVertexPointSize;
+        uniform mat4 uModelViewMatrix;
+        smooth out vec4 vColor;
+    
+        void main(void) {
+          vec4 pos = vec4(aVertexPosition,1.0);
+    
+          gl_PointSize = uVertexPointSize;
+          gl_Position = uModelViewMatrix*pos;
+          vColor= vec4(aVertexColor,1.0);
+        }
+      </script>
+
+    <!-- fragment shader -->
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        #version 300 es
+        precision mediump float;
+        in vec4 vColor;
+        out vec4 fragColor;
+    
+        void main(void) {
+          fragColor = vColor;
+        }
+      </script>
+
+    <script type="text/javascript">
+
+        class Elipsis extends Circle {
+            constructor(cx,cy,alpha,beta,radius,color,numSubdiv){
+                super(cx,cy,radius,color,numSubdiv);
+                this.cx = cx;
+                this.cy = cy;
+                this.alpha = alpha;
+                this.beta = beta;
+                this.radius = radius;
+                this.numSubdiv = numSubdiv;
+            }
+
+            evaluate(ang){
+                var x,y;
+                x = this.radius * this.alpha * Math.cos(ang) + this.cx;
+                y = this.radius * this.beta * Math.sin(ang) + this.cy;
+                return [x,y];
+            }
+
+        }
+
+        class WebGLElipsis extends Elipsis {
+            constructor (gl,program,cx,cy,alpha,beta,radius,color,numSubdiv,filled,interpolation){
+                super(cx,cy,alpha,beta,radius,color,numSubdiv);
+                this.gl = gl;
+                this.program = program;
+                this.interpolation = interpolation;
+                this.filled = filled;
+            
+            }
+        
+            getWebGLModel(attribShaderVariables = null,uniformShaderVariables = null){
+                
+                var coords = [];
+                var indices = [];
+                var colors = [];
+                var primitiveType;
+        
+                if (this.filled == true){
+                    this.discreticizeFilled(this.numSubdiv,coords,indices,colors);
+                    primitiveType = this.gl.TRIANGLES;
+                }
+                else{
+                    this.discreticize(this.numSubdiv,coords,indices,colors);
+                    primitiveType = this.gl.LINE_LOOP;
+                }
+         
+                const webGLCircleModel = new WebGLModel(this.gl,this.program,2,primitiveType,coords,indices,colors,null,null,null);
+                webGLCircleModel.set(attribShaderVariables,uniformShaderVariables);
+        
+                return webGLCircleModel;
+            }
+        }
+
+        class MyWebGLMainAPP extends WebGLMainApp{
+    
+            constructor(){
+                super();
+                this.program = null;
+                this.model = null;
+      
+            }
+            
+            init() {      
+                this.gl.clearColor(0.7, 0.7, 0.9, 1.0);
+                super.init();
+            }
+
+            create(){
+              // Cria um program
+              this.program = this.createProgram("vertex-shader","fragment-shader");
+              
+              //Criar as cores vermelho, verde e azul
+              const c0 = new Color(1.0,0.0,0.0);
+              const c1 = new Color(0.0,1.0,0.0);
+              const c2 = new Color(0.0,0.0,1.0);
+      
+              //Define as variáveis attribute e uniform dos shaders
+              this.attribShaderVariables = ["aVertexPosition","aVertexColor"];
+              this.uniformShaderVariables = ["uVertexPointSize","uModelViewMatrix"];
+      
+              //Obtem a localização das variáveis no shader
+              this.setProgramAttribShaderVariablesLocation(this.program,this.attribShaderVariables);
+              this.setProgramUniformShaderVariablesLocation(this.program,this.uniformShaderVariables);              
+
+              //Cria a elipse
+              const alpha = 2.0;
+              const beta = 1.0
+              const elipse = new WebGLElipsis(this.gl,this.program,
+                                             0.0,0.0,alpha,beta,0.3,
+                                             c0,32,true,true);
+                                             
+              this.elipseModel = elipse.getWebGLModel();                                
+            }
+      
+      
+            draw() {
+              const angle = (10.0*Math.PI)/180.0;
+              const tx = 0.0;
+              const ty = 0.0;
+              const identMatrix4 = [1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0];
+              const modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                       -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                                    0.0,             0.0, 1.0, 0.0,
+                                                     tx,               ty, 0.0, 1.0];
+      
+              const uniformShaderVariablesValues = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,identMatrix4]};
+              const uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+      
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues);
+      
+              
+              this.elipseModel.draw();
+
+      
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues2);
+            }        
+        }
+    </script>
+
+</head>
+
+<body>
+
+    <canvas id="webgl-canvas" width="800" height="800">
+      Your browser does not support the HTML5 canvas element.
+    </canvas>
+  
+    <script type="text/javascript">
+        let myWebGLMainAPP = new MyWebGLMainAPP();
+        window.onload = myWebGLMainAPP.init();
+    </script>
+  
+  </body>
+
+</html>

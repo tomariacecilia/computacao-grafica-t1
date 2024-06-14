@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebGL Bouncing Ball</title>
+  <style>
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background-color: #000000;
+    }
+  </style>
+  <script type="text/javascript" src="webgl_main_app.js"></script>
+  <script type="text/javascript" src="webgl_model.js"></script>
+  <script type="text/javascript" src="bouncing_ball.js"></script>
+  
+  <!-- vertex shader -->
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec2 aVertexPosition;
+    uniform mat4 uModelViewMatrix;
+    void main(void) {
+      gl_Position = uModelViewMatrix * vec4(aVertexPosition, 0.0, 1.0);
+    }
+  </script>
+
+  <!-- fragment shader -->
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    void main(void) {
+      gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red color
+    }
+  </script>
+</head>
+<body>
+  <canvas id="webgl-canvas" width="800" height="600"></canvas>
+  <script type="text/javascript">
+    window.onload = function() {
+      const app = new MyWebGLMainApp();
+      app.init();
+    };
+  </script>
+</body>
+</html>

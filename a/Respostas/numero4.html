@@ -1,0 +1,196 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="../webGLApp.js"></script>
+    <script type="text/javascript" src="../webGLModel.js"></script>
+    <script type="text/javascript" src="../shapes2d.js"></script>
+    <script type="text/javascript" src="../shapes2dWebGL.js"></script>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        #version 300 es
+        precision mediump float;
+    
+        in vec3 aVertexPosition;
+        in vec3 aVertexColor;
+        uniform float uVertexPointSize;
+        uniform mat4 uModelViewMatrix;
+        smooth out vec4 vColor;
+    
+        void main(void) {
+          vec4 pos = vec4(aVertexPosition,1.0);
+    
+          gl_PointSize = uVertexPointSize;
+          gl_Position = uModelViewMatrix*pos;
+          vColor= vec4(aVertexColor,1.0);
+        }
+      </script>
+
+    <!-- fragment shader -->
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        #version 300 es
+        precision mediump float;
+        in vec4 vColor;
+        out vec4 fragColor;
+    
+        void main(void) {
+          fragColor = vColor;
+        }
+      </script>
+
+    <script type="text/javascript">
+        class MyWebGLMainAPP extends WebGLMainApp{
+    
+            constructor(){
+                super();
+                this.program = null;
+                this.model = null;
+      
+            }
+            
+            init() {      
+                this.gl.clearColor(0.7, 0.7, 0.9, 1.0);
+                super.init();
+            }
+
+            create(){
+              // Cria um program
+              this.program = this.createProgram("vertex-shader","fragment-shader");
+              
+              //Criar as cores vermelho, verde e azul
+              const c0 = new Color(1.0,0.0,0.0);
+              const c1 = new Color(0.0,1.0,0.0);
+              const c2 = new Color(0.0,0.0,1.0);
+      
+              //Define as variáveis attribute e uniform dos shaders
+              this.attribShaderVariables = ["aVertexPosition","aVertexColor"];
+              this.uniformShaderVariables = ["uVertexPointSize","uModelViewMatrix"];
+      
+              //Obtem a localização das variáveis no shader
+              this.setProgramAttribShaderVariablesLocation(this.program,this.attribShaderVariables);
+              this.setProgramUniformShaderVariablesLocation(this.program,this.uniformShaderVariables);              
+                                                   
+              //Cria a lista de triangulos
+              const line = new WebGLTriangleList(this.gl,this.program);
+              // const rotatedLine = new WebGLTriangleList(this.gl,this.program);
+
+              //Cria dois triangulos para formar a linha
+              const firstTriangle = new Triangle(new Point2d(-1,0.005,c0),
+                                                 new Point2d(-1.0,0.0,c1),
+                                                 new Point2d(1,0.0,c2),c0,false
+                                                );
+
+              const secondTriangle = new Triangle(new Point2d(-1,0.005,c1),
+                                                  new Point2d(1.0,0.005,c1),
+                                                  new Point2d(1,0.0,c2),c0,false
+                                                ); 
+
+              line.push(firstTriangle)
+              line.push(secondTriangle)
+                                        
+              this.firstLine = line.getWebGLModel(); 
+
+              // Criando uma esfera
+              const circle = new WebGLCircle(this.gl,this.program,
+                                             0.0,0.0,0.3,
+                                             c2,32,true,true);
+                                             
+              this.circleModel = circle.getWebGLModel();    
+            }
+      
+      
+            draw() {
+              let angle = (90 *Math.PI)/180.0; //Angle is 90, In degrees
+              let tx = 0.0;
+              let ty = 0.0;
+              
+              const identMatrix4 = [1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0];
+              let modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                       -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                                    0.0,             0.0, 1.0, 0.0,
+                                                     tx,               ty, 0.0, 1.0];
+              
+              const uniformShaderVariablesValues = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,identMatrix4]};
+              // shader with rotation
+              let uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+      
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues);
+              this.firstLine.draw();
+
+
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues2);
+              this.firstLine.draw();
+              
+              // Changing Matrix to place the sphere in the first quarter of graph
+              angle = (0 * Math.PI)/180.0;
+              tx = 0.5;
+              ty = 0.5;
+              modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                 -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                  0.0,             0.0, 1.0, 0.0,
+                                  tx,               ty, 0.0, 1.0];
+              
+              uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues2);
+              this.circleModel.draw();
+
+
+              // Changing Matrix to place the sphere in the second quarter of graph
+              angle = (0 * Math.PI)/180.0;
+              tx = -0.5;
+              ty = 0.5;
+              modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                 -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                  0.0,             0.0, 1.0, 0.0,
+                                  tx,               ty, 0.0, 1.0];
+              
+              uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues2);
+              this.circleModel.draw();
+
+              // Changing Matrix to place the sphere in the third quarter of graph
+              angle = (0 * Math.PI)/180.0;
+              tx = -0.5;
+              ty = -0.5;
+              modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                 -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                  0.0,             0.0, 1.0, 0.0,
+                                  tx,               ty, 0.0, 1.0];
+              
+              uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues2);
+              this.circleModel.draw();
+              
+              // Changing Matrix to place the sphere in the fourth quarter of graph
+              angle = (0 * Math.PI)/180.0;
+              tx = 0.5;
+              ty = -0.5;
+              modelViewMatrix = [ Math.cos(angle), Math.sin(angle), 0.0, 0.0,
+                                 -Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                                  0.0,             0.0, 1.0, 0.0,
+                                  tx,               ty, 0.0, 1.0];
+              
+              uniformShaderVariablesValues2 = {"uVertexPointSize":["1f",16.0],"uModelViewMatrix":["mat4",false,modelViewMatrix]};
+              this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues2);
+              this.circleModel.draw();
+
+
+            }        
+        }
+    </script>
+
+</head>
+
+<body>
+
+    <canvas id="webgl-canvas" width="800" height="800">
+      Your browser does not support the HTML5 canvas element.
+    </canvas>
+  
+    <script type="text/javascript">
+        let myWebGLMainAPP = new MyWebGLMainAPP();
+        window.onload = myWebGLMainAPP.init();
+    </script>
+  
+  </body>
+
+</html>
